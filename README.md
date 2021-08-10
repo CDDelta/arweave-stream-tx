@@ -9,6 +9,33 @@ This package introduces async versions of methods provided in `arweave-js` to al
 
 This package only works with Node 15+ and does not currently include browser support as browsers and NodeJS do not share a common streams API.
 
+## Usage
+
+```typescript
+import Arweave from 'arweave';
+import { createTransactionAsync } from 'arweave-stream-tx';
+import { createReadStream } from 'fs';
+import { pipeline } from 'stream/promises';
+
+const arweave = new Arweave({
+  host: 'arweave.net',
+  protocol: 'https',
+  port: 443,
+  logging: false,
+  timeout: 15000,
+});
+
+const filePath = '<file path>';
+const wallet = await arweave.wallets.generate();
+
+// Create the transaction.
+const tx = await pipeline(createReadStream(filePath), createTransactionAsync({}, arweave, wallet));
+await arweave.transactions.sign(tx, wallet);
+
+// Upload it to Arweave.
+await pipeline(createReadStream(filePath), uploadTransactionAsync(tx, arweave, false));
+```
+
 ## Development
 
 To build the package, run:
