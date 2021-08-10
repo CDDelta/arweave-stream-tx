@@ -33,7 +33,7 @@ const tx = await pipeline(createReadStream(filePath), createTransactionAsync({},
 await arweave.transactions.sign(tx, wallet);
 
 // Upload it to Arweave.
-await pipeline(createReadStream(filePath), uploadTransactionAsync(tx, arweave, false));
+await pipeline(createReadStream(filePath), uploadTransactionAsync(tx, arweave));
 ```
 
 ## Development
