@@ -13,7 +13,7 @@ This package only works with Node 15+ and does not currently include browser sup
 
 ```typescript
 import Arweave from 'arweave';
-import { createTransactionAsync } from 'arweave-stream-tx';
+import { createTransactionAsync, uploadTransactionAsync } from 'arweave-stream-tx';
 import { createReadStream } from 'fs';
 import { pipeline } from 'stream/promises';
 
