@@ -7,6 +7,8 @@ Since the release of the v2 transaction format, Arweave theoretically supports d
 
 This package introduces async versions of methods provided in `arweave-js` to allow the creation and upload of Arweave transactions of theoretically infinite size.
 
+This package only works with Node 15+ and does not currently include browser support as browsers and NodeJS do not share a common streams API.
+
 ## Development
 
 To build the package, run:
