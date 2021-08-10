@@ -1,13 +1,13 @@
 {
   "compilerOptions": {
     "module": "commonjs",
+    "declaration": true,
     "removeComments": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "strictNullChecks": true,
     "target": "es2017",
     "outDir": "./dist",
-    "baseUrl": "./",
-    "incremental": true
+    "baseUrl": "./"
   },
 }
