@@ -51,8 +51,6 @@ export function generateTransactionChunksAsync() {
           if (chunk.byteLength >= MIN_CHUNK_SIZE && chunk.byteLength <= MAX_CHUNK_SIZE) {
             await addChunk(chunkStreamByteIndex, chunk);
           } else if (chunk.byteLength < MIN_CHUNK_SIZE) {
-            // TODO: Add tests to explicitly test this condition.
-
             if (previousDataChunk) {
               // If this final chunk is smaller than the minimum chunk size, rebalance this final chunk and
               // the previous chunk to keep the final chunk size above the minimum threshold.
@@ -90,7 +88,7 @@ export function generateTransactionChunksAsync() {
 
     const leaves = await generateLeaves(chunks);
     const root = await buildLayers(leaves);
-    const proofs = await generateProofs(root);
+    const proofs = generateProofs(root);
 
     return {
       data_root: root.id,
