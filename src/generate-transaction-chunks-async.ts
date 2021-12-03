@@ -42,7 +42,7 @@ export function generateTransactionChunksAsync() {
     await pipeline(
       source,
       chunker(MAX_CHUNK_SIZE, { flush: true }),
-      async function (chunkedSource: AsyncIterable<Buffer>) {
+      async function (chunkedSource: AsyncGenerator<Buffer>) {
         for await (const chunk of chunkedSource) {
           if (expectChunkGenerationCompleted) {
             throw Error('Expected chunk generation to have completed.');
