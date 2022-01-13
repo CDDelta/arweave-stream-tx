@@ -1,9 +1,12 @@
 import { generateTransactionChunks, MAX_CHUNK_SIZE, MIN_CHUNK_SIZE } from 'arweave/node/lib/merkle';
-import { createReadStream } from 'fs';
+import { createReadStream, existsSync } from 'fs';
 import { readFile } from 'fs/promises';
 import { ReadableStreamBuffer } from 'stream-buffers';
 import { pipeline } from 'stream/promises';
+import { promisify } from 'util';
 import { generateTransactionChunksAsync } from './generate-transaction-chunks-async';
+
+const exec = promisify(require('child_process').exec);
 
 describe('generateTransactionChunksAsync', () => {
   it('should return the same results as the arweave-js implementation', async () => {
@@ -38,5 +41,18 @@ describe('generateTransactionChunksAsync', () => {
     const nativeGeneratedChunks = await readFile(filePath).then((data) => generateTransactionChunks(data));
 
     expect(chunks).toMatchObject(nativeGeneratedChunks);
+  });
+
+  it('should be able to generate chunks for really large files', async () => {
+    jest.setTimeout(60 * 1000);
+
+    const filePath = './test/fixtures/large-file.bin';
+    if (!existsSync(filePath)) {
+      await exec(`fallocate -l 5G ${filePath}`);
+    }
+
+    const chunks = await pipeline(createReadStream(filePath), generateTransactionChunksAsync());
+
+    expect(chunks.data_root).toBeTruthy();
   });
 });
