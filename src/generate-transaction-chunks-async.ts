@@ -48,6 +48,17 @@ export function generateTransactionChunksAsync() {
             if (expectChunkGenerationCompleted) {
               throw Error('Expected chunk generation to have completed.');
             }
+
+            if (chunk.byteLength > MAX_CHUNK_SIZE) {
+              // This can happen when the read stream is flushed
+              // In this case, process the head chunk and recurse through the tail
+              const chunkHead = chunk.slice(0, MAX_CHUNK_SIZE)
+              await processChunk(chunkHead);
+              const chunkTail = chunk.slice(MAX_CHUNK_SIZE)
+              await processChunk(chunkTail);
+              // The rest of the function should not be called for oversized chunks
+              return;
+            }
   
             if (chunk.byteLength >= MIN_CHUNK_SIZE && chunk.byteLength <= MAX_CHUNK_SIZE) {
               await addChunk(chunkStreamByteIndex, chunk);
@@ -77,15 +88,6 @@ export function generateTransactionChunksAsync() {
               }
   
               expectChunkGenerationCompleted = true;
-            } else if (chunk.byteLength > MAX_CHUNK_SIZE) {
-              // This can happen when the read stream is flushed
-              // In this case, process the head chunk and recurse through the tail
-              const chunkHead = chunk.slice(0, MAX_CHUNK_SIZE)
-              await processChunk(chunkHead);
-              const chunkTail = chunk.slice(MAX_CHUNK_SIZE)
-              await processChunk(chunkTail);
-              // The rest of the function should not be called for oversized chunks
-              return;
             }
   
             chunkStreamByteIndex += chunk.byteLength;

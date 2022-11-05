@@ -73,69 +73,83 @@ export function uploadTransactionAsync(tx: Transaction, arweave: Arweave, create
 
         const activeChunkUploads: Promise<any>[] = [];
 
-        for await (const chunkData of chunkedSource) {
-          const currentChunk = chunks[chunkIndex];
-          const chunkSize = currentChunk.maxByteRange - currentChunk.minByteRange;
-          const expectedToBeFinalRebalancedChunk = dataRebalancedIntoFinalChunk != null;
+        for await (const volatileChunkData of chunkedSource) {
+          async function processChunkData(chunkData: Buffer) {
+            if (chunkData.byteLength > MAX_CHUNK_SIZE) {
+              // This can happen when the read stream is flushed
+              // In this case, process the head chunk and recurse through the tail
+              const chunkHead = chunkData.slice(0, MAX_CHUNK_SIZE);
+              await processChunkData(chunkHead);
+              const chunkTail = chunkData.slice(MAX_CHUNK_SIZE);
+              await processChunkData(chunkTail);
+              // The rest of the function should not be called for oversized chunks
+              return;
+            }
 
-          let chunkPayload: ChunkUploadPayload;
+            const currentChunk = chunks[chunkIndex];
+            const chunkSize = currentChunk.maxByteRange - currentChunk.minByteRange;
+            const expectedToBeFinalRebalancedChunk = dataRebalancedIntoFinalChunk != null;
 
-          if (chunkData.byteLength === chunkSize) {
-            // If the transaction data chunks was never rebalanced this is the only code path that
-            // will execute as the incoming chunked data as the will always be equivalent to `chunkSize`.
-            chunkPayload = prepareChunkUploadPayload(chunkIndex, chunkData);
-          } else if (chunkData.byteLength > chunkSize) {
-            // If the incoming chunk data is larger than the expected size of the current chunk
-            // it means that the transaction had chunks that were rebalanced to meet the minimum chunk size.
-            //
-            // It also means that the chunk we're currently processing should be the second to last
-            // chunk.
-            chunkPayload = prepareChunkUploadPayload(chunkIndex, chunkData.slice(0, chunkSize));
+            let chunkPayload: ChunkUploadPayload;
 
-            dataRebalancedIntoFinalChunk = chunkData.slice(chunkSize);
-          } else if (chunkData.byteLength < chunkSize && expectedToBeFinalRebalancedChunk) {
-            // If this is the final rebalanced chunk, create the upload payload by concatenating the previous
-            // chunk's data that was moved into this and the remaining stream data.
-            chunkPayload = prepareChunkUploadPayload(
-              chunkIndex,
-              Buffer.concat(
-                [dataRebalancedIntoFinalChunk!, chunkData],
-                dataRebalancedIntoFinalChunk!.length + chunkData.length,
-              ),
+            if (chunkData.byteLength === chunkSize) {
+              // If the transaction data chunks was never rebalanced this is the only code path that
+              // will execute as the incoming chunked data as the will always be equivalent to `chunkSize`.
+              chunkPayload = prepareChunkUploadPayload(chunkIndex, chunkData);
+            } else if (chunkData.byteLength > chunkSize) {
+              // If the incoming chunk data is larger than the expected size of the current chunk
+              // it means that the transaction had chunks that were rebalanced to meet the minimum chunk size.
+              //
+              // It also means that the chunk we're currently processing should be the second to last
+              // chunk.
+              chunkPayload = prepareChunkUploadPayload(chunkIndex, chunkData.slice(0, chunkSize));
+
+              dataRebalancedIntoFinalChunk = chunkData.slice(chunkSize);
+            } else if (chunkData.byteLength < chunkSize && expectedToBeFinalRebalancedChunk) {
+              // If this is the final rebalanced chunk, create the upload payload by concatenating the previous
+              // chunk's data that was moved into this and the remaining stream data.
+              chunkPayload = prepareChunkUploadPayload(
+                chunkIndex,
+                Buffer.concat(
+                  [dataRebalancedIntoFinalChunk!, chunkData],
+                  dataRebalancedIntoFinalChunk!.length + chunkData.length,
+                ),
+              );
+            } else {
+              throw Error('Transaction data stream terminated incorrectly.');
+            }
+
+            const chunkValid = await validatePath(
+              txChunkData.data_root,
+              parseInt(chunkPayload.offset),
+              0,
+              parseInt(chunkPayload.data_size),
+              b64UrlToBuffer(chunkPayload.data_path),
             );
-          } else {
-            throw Error('Transaction data stream terminated incorrectly.');
+
+            if (!chunkValid) {
+              throw new Error(`Unable to validate chunk ${chunkIndex}.`);
+            }
+
+            // Upload multiple transaction chunks in parallel to speed up the upload.
+
+            // If we are already at the maximum concurrent chunk upload limit,
+            // wait till all of them to complete first before continuing.
+            if (activeChunkUploads.length >= MAX_CONCURRENT_CHUNK_UPLOAD_COUNT) {
+              await Promise.all(activeChunkUploads);
+              // Clear the active chunk uploads array.
+              activeChunkUploads.length = 0;
+            }
+
+            activeChunkUploads.push(
+              backOff(() => arweave.api.post('chunk', chunkPayload), {
+                retry: (err) => !FATAL_CHUNK_UPLOAD_ERRORS.includes(err.message),
+              }),
+            );
+
+            chunkIndex++;
           }
-
-          const chunkValid = await validatePath(
-            txChunkData.data_root,
-            parseInt(chunkPayload.offset),
-            0,
-            parseInt(chunkPayload.data_size),
-            b64UrlToBuffer(chunkPayload.data_path),
-          );
-
-          if (!chunkValid) {
-            throw new Error(`Unable to validate chunk ${chunkIndex}.`);
-          }
-
-          // Upload multiple transaction chunks in parallel to speed up the upload.
-
-          // If we are already at the maximum concurrent chunk upload limit,
-          // wait till all of them to complete first before continuing.
-          if (activeChunkUploads.length >= MAX_CONCURRENT_CHUNK_UPLOAD_COUNT) {
-            await Promise.all(activeChunkUploads);
-            // Clear the active chunk uploads array.
-            activeChunkUploads.length = 0;
-          }
-
-          activeChunkUploads.push(
-            backOff(() => arweave.api.post('chunk', chunkPayload), {
-              retry: (err) => !FATAL_CHUNK_UPLOAD_ERRORS.includes(err.message),
-            }),
-          );
-
-          chunkIndex++;
+          processChunkData(volatileChunkData)
         }
 
         await Promise.all(activeChunkUploads);
