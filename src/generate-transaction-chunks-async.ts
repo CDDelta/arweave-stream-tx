@@ -8,8 +8,8 @@ import {
   MIN_CHUNK_SIZE,
 } from 'arweave/node/lib/merkle';
 import Transaction from 'arweave/node/lib/transaction';
-import chunker from 'stream-chunker';
 import { pipeline } from 'stream/promises';
+import { chunker } from './common';
 
 /**
  * Generates the Arweave transaction chunk information from the piped data stream.

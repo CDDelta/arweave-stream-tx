@@ -3,8 +3,8 @@ import { MAX_CHUNK_SIZE, validatePath } from 'arweave/node/lib/merkle';
 import Transaction from 'arweave/node/lib/transaction';
 import { b64UrlToBuffer, bufferTob64Url } from 'arweave/node/lib/utils';
 import { backOff } from 'exponential-backoff';
-import chunker from 'stream-chunker';
 import { pipeline } from 'stream/promises';
+import { chunker } from './common';
 
 // Copied from `arweave-js`.
 const FATAL_CHUNK_UPLOAD_ERRORS = [
