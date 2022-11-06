@@ -1,7 +1,6 @@
 import { generateTransactionChunks, MAX_CHUNK_SIZE, MIN_CHUNK_SIZE } from 'arweave/node/lib/merkle';
 import { createReadStream, existsSync } from 'fs';
 import { readFile } from 'fs/promises';
-import { ReadableStreamBuffer } from 'stream-buffers';
 import { pipeline } from 'stream/promises';
 import { promisify } from 'util';
 import { generateTransactionChunksAsync } from './generate-transaction-chunks-async';
@@ -20,15 +19,8 @@ describe('generateTransactionChunksAsync', () => {
 
   it('should balance chunks for data with a chunk smaller than MIN_CHUNK_SIZE correctly', async () => {
     const data = Buffer.alloc(MAX_CHUNK_SIZE * 2 + MIN_CHUNK_SIZE - 1);
-    const dataStream = new ReadableStreamBuffer({
-      frequency: 10,
-      chunkSize: MIN_CHUNK_SIZE,
-    });
 
-    dataStream.put(data);
-    dataStream.stop();
-
-    const chunks = await pipeline(dataStream, generateTransactionChunksAsync());
+    const chunks = await pipeline([data], generateTransactionChunksAsync());
     const nativeGeneratedChunks = await generateTransactionChunks(data);
 
     expect(chunks).toMatchObject(nativeGeneratedChunks);

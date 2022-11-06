@@ -1,6 +1,5 @@
 import Arweave from 'arweave';
 import { createReadStream } from 'fs';
-import { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
 import { generateTransactionChunksAsync } from './generate-transaction-chunks-async';
 import { uploadTransactionAsync } from './upload-transaction-async';
@@ -25,14 +24,7 @@ describe('uploadTransactionAsync', () => {
 
     await tx.prepareChunks(txData);
 
-    const txDataStream = new Readable({
-      read() {
-        this.push(txData);
-        this.push(null);
-      },
-    });
-
-    const uploadOp = pipeline(txDataStream, uploadTransactionAsync(tx, arweave, false));
+    const uploadOp = pipeline([txData], uploadTransactionAsync(tx, arweave, false));
 
     await expect(uploadOp).resolves.not.toThrow();
   });
@@ -67,14 +59,7 @@ describe('uploadTransactionAsync', () => {
 
     txData.fill(0, 0, 126);
 
-    const txDataStream = new Readable({
-      read() {
-        this.push(txData);
-        this.push(null);
-      },
-    });
-
-    const uploadOp = pipeline(txDataStream, uploadTransactionAsync(tx, arweave, false));
+    const uploadOp = pipeline([txData], uploadTransactionAsync(tx, arweave, false));
     await expect(uploadOp).rejects.toBeDefined();
   });
 });
