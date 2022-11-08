@@ -48,7 +48,7 @@ export interface ChunkerOptions {
   flush: boolean;
 }
 
-export function chunker(expectedChunkSize: number, { flush }: ChunkerOptions) {
+export function chunker(expectedChunkSize: number, { flush }: ChunkerOptions = { flush: false }) {
   return async function* (stream: AsyncIterable<Buffer>): AsyncIterable<Buffer> {
     const chunkBuffer = new ChunkBuffer();
 
@@ -66,7 +66,10 @@ export function chunker(expectedChunkSize: number, { flush }: ChunkerOptions) {
     }
 
     if (flush) {
-      yield chunkBuffer.flush();
+      const flushedBuffer = chunkBuffer.flush();
+      if (flushedBuffer.byteLength > 0) {
+        yield flushedBuffer;
+      }
     }
   };
 }
