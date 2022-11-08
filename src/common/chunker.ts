@@ -15,21 +15,18 @@ export class ChunkBuffer {
     for (const [i, chunk] of this.buffers.entries()) {
       totalBufferSize += chunk.byteLength;
 
-      if (totalBufferSize >= expectedChunkSize) {
+      if (totalBufferSize === expectedChunkSize) {
+        return Buffer.concat(this.buffers.splice(0, i + 1));
+      } else if (totalBufferSize > expectedChunkSize) {
+        const chunkOverflowAmount = totalBufferSize - expectedChunkSize;
+        const chunkWatermark = chunk.byteLength - chunkOverflowAmount;
+        const chunkBelowWatermark = chunk.slice(0, chunkWatermark);
+        const chunkOverflow = chunk.slice(chunkWatermark);
+
         const chunkBuffers = this.buffers.splice(0, i);
+        chunkBuffers.push(chunkBelowWatermark);
 
-        if (totalBufferSize === expectedChunkSize) {
-          chunkBuffers.push(...this.buffers.splice(0, 1));
-        } else if (totalBufferSize > expectedChunkSize) {
-          const chunkOverflowAmount = totalBufferSize - expectedChunkSize;
-          const chunkWatermark = chunk.byteLength - chunkOverflowAmount;
-          const chunkBelowWatermark = chunk.slice(0, chunkWatermark);
-          const chunkOverflow = chunk.slice(chunkWatermark);
-
-          this.buffers[0] = chunkOverflow;
-          chunkBuffers.push(chunkBelowWatermark);
-        }
-
+        this.buffers[0] = chunkOverflow;
         return Buffer.concat(chunkBuffers);
       }
     }
