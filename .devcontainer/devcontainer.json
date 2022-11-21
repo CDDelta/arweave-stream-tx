@@ -1,4 +1,8 @@
 {
 	"name": "arweave-stream-tx",
-	"image": "mcr.microsoft.com/devcontainers/typescript-node:16-bullseye"
+	"image": "mcr.microsoft.com/devcontainers/typescript-node:16-bullseye",
+	"extensions": [
+		"esbenp.prettier-vscode"
+	],
+	"postCreateCommand": "npm install"
 }
