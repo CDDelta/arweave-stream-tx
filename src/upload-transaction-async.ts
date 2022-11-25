@@ -88,7 +88,6 @@ export function uploadTransactionAsync(tx: Transaction, arweave: Arweave, create
           // It also means that the chunk we're currently processing should be the second to last
           // chunk.
           chunkPayload = prepareChunkUploadPayload(chunkIndex, chunkData.slice(0, chunkSize));
-
           dataRebalancedIntoFinalChunk = chunkData.slice(chunkSize);
         } else if (chunkData.byteLength < chunkSize && expectedToBeFinalRebalancedChunk) {
           // If this is the final rebalanced chunk, create the upload payload by concatenating the previous
@@ -138,7 +137,7 @@ export function uploadTransactionAsync(tx: Transaction, arweave: Arweave, create
       await Promise.all(activeChunkUploads);
 
       if (chunkIndex < chunks.length) {
-        throw Error('Transaction upload incomplete.');
+        throw Error(`Transaction upload incomplete: ${chunkIndex + 1}/${chunks.length} chunks uploaded.`);
       }
     });
   };
